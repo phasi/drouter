@@ -257,8 +257,8 @@ def updaterService(msg_queue):
             if msg == "update" or msg == "autoupdate":
                 updater_service_logger.info("Starting updater service")
                 if not msg == "autoupdate":
-                    updater_service_logger.debug("Waiting for 10 seconds for Docker to start/stop services.")
-                    time.sleep(3)
+                    updater_service_logger.debug("Waiting for 15 seconds for Docker to start/stop services.")
+                    time.sleep(15)
                 dr=DRouter()
                 time.sleep(1)
                 dr.writeHAProxyConfigs(dr.collectTasks())
