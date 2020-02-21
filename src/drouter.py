@@ -242,13 +242,6 @@ class ClearableQueue(queue.Queue):
 # Create new queue
 q=ClearableQueue()
 
-# def timerService(msg_queue):
-#     while True:
-#         time.sleep(15)
-#         msg_queue.put("autoupdate")
-
-# thread_timer_service=threading.Thread(target=timerService, args=(q,), daemon=True)
-
 # Updater service
 def updaterService(msg_queue):
     while True:
@@ -302,16 +295,9 @@ def eventCollector(msg_queue):
             if not response:
                 break
 
-
-# Event collector service thread
-# thread_event_collector=threading.Thread(target=eventCollector, args=(q,))
-
 try:
-    # thread_timer_service.start()
+
     thread_updater_service.start()
-    # thread_event_collector.start()
-    # thread_updater_service.join()
-    # thread_event_collector.join()
     eventCollector(q)
 except (KeyboardInterrupt, SystemExit):
     sys.exit(0)
