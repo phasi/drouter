@@ -1,0 +1,28 @@
+version: '3.1'
+
+services:
+
+  # Service template
+  example_service:
+    image: myregistry/myrepository:latest
+    environment:
+      TZ: Europe/Helsinki
+    ports:
+      - "7018:80"
+    deploy:
+      labels: [drouter.host=domain.com, drouter.path=/, drouter.port=80]
+      mode: replicated
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 60s
+        failure_action: rollback
+      restart_policy:
+        max_attempts: 3
+        condition: on-failure
+    networks:
+      - loadbalancer
+
+networks:
+  loadbalancer:
+    external: true

@@ -1,0 +1,23 @@
+version: '3.1'
+
+services:
+
+  # D-Router
+  drouter:
+    image: local/drouter:latest
+    volumes:
+        - "/var/run/docker.sock:/var/run/docker.sock"
+        - "./haproxy:/config/haproxy"
+    environment:
+        HAPROXY_CONFIG_PATH: "/config/haproxy"
+        DROUTER_DOCKER_VNET: "loadbalancer"
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 60s
+        failure_action: rollback
+      restart_policy:
+        max_attempts: 3
+        condition: on-failure
