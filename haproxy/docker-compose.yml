@@ -22,7 +22,6 @@ services:
     networks:
       - loadbalancer
 
-# Create network mukananet
 networks:
   loadbalancer:
     external: true
