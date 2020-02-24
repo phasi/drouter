@@ -80,8 +80,10 @@ class Service():
             self.ssl=""
         self.cut_path=None
         if not cut_path == None:
-            self.cut_path = self.path.replace("/", "")
-
+            if self.path.startswith("/"):
+                self.cut_path=self.path[1:]
+            if self.cut_path.endswith("/"):
+                self.cut_path=self.path[:-1]
 class Config():
     def __init__(self):
         self.domains={}
