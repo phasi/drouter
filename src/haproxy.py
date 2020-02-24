@@ -24,6 +24,7 @@ LB_CONFIG_BACKEND_CUT_PATH="""
     http-request replace-path ^([^\\ ]*\\ /){server_path_without_slash}[/]?(.*)     \\1\\2"""
 
 LB_CONFIG_SSL_VERIFY_NONE="ssl verify none"
+LB_CONFIG_SSL="ssl"
 
 COMMENT="""
 # Reverse proxy configurations are automatically generated under this line. Do not modify them by hand.
@@ -73,6 +74,8 @@ class Service():
         self.ssl=None
         if ssl == "noverify":
             self.ssl=LB_CONFIG_SSL_VERIFY_NONE
+        elif ssl == "verify":
+            self.ssl=LB_CONFIG_SSL
         elif ssl == None:
             self.ssl=""
         self.cut_path=None
