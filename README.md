@@ -18,17 +18,19 @@ DRouter will check your service labels and configure HAProxy according to them.
 - Docker Swarm (Supported API Version 1.40+)
 - HAProxy 2.1+ docker image (for example from docker hub)
 
-## Necessary for domain based routing
-
-- Domain records (either)
-  - Real ones pointed to your environment public IP or
-  - Fake ones (point for example domain.com to 127.0.0.1 in your /etc/hosts)
 
 The easiest way to run DRouter is to build and deploy its Docker image.
 Otherwise you will also need:
 
 - Python 3.7x
 - make
+
+## Necessary for domain based routing
+
+- Domain records (either)
+  - Real ones pointed to your environment public IP or
+  - Fake ones (point for example domain.com to 127.0.0.1 in your /etc/hosts)
+
 
 ## How to run DRouter?
 
