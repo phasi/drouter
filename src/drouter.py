@@ -109,7 +109,7 @@ except:
 
 HAPROXY_TEMPLATE="{}/haproxy.cfg.template-http".format(HAPROXY_CONFIG_PATH)
 try:
-    HAPROXY_TEMPLATE = "{}/{}".format(HAPROXY_CONFIG_PATH, os.environ["HAPROXY_TEMPLATE"])
+    HAPROXY_TEMPLATE = "{}".format(os.environ["HAPROXY_TEMPLATE"])
     logger.debug("Set HAPROXY_TEMPLATE={}".format(HAPROXY_TEMPLATE))
 except:
     logger.debug("HAPROXY_TEMPLATE is set to default -> {} (If you want to change this set HAPROXY_TEMPLATE as an environment variable".format(HAPROXY_TEMPLATE))
