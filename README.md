@@ -4,11 +4,22 @@ Create HAProxy configurations automatically based on the current status of your 
 
 DRouter will check your service labels and configure HAProxy according to them.
 
-
 ## Prerequisites
+
+- Docker Swarm configured
+
+## DRouter example photo
+
+![DRouter picture](drouter.png)
+
+
+## Dependencies
 
 - Docker Swarm (Supported API Version 1.40+)
 - HAProxy 2.1+ docker image (for example from docker hub)
+
+## Necessary for domain based routing
+
 - Domain records (either)
   - Real ones pointed to your environment public IP or
   - Fake ones (point for example domain.com to 127.0.0.1 in your /etc/hosts)
