@@ -21,7 +21,7 @@ LB_CONFIG_BACKEND_SERVER="""
     server {upstream_name}_{id} {upstream_server} {ssl} cookie c_{upstream_name}_{id}"""
 
 LB_CONFIG_BACKEND_CUT_PATH="""
-    http-request replace-path ^([^\\ ]*\\ /){server_path_without_slash}[/]?(.*)     \\1\\2"""
+    http-request replace-path /{server_path_without_slash}[/]?(.*) /\\1"""
 
 LB_CONFIG_SSL_VERIFY_NONE="ssl verify none"
 LB_CONFIG_SSL="ssl"
