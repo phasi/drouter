@@ -56,14 +56,14 @@ make deploy-all
 
 ### Using DRouter outside Docker container
 
-- Install dependencies mentioned in "Prerequisites".
+- Install dependencies
 
 shortcut:
 ```bash
 make lbnet
 cd src
 ./drouter.py
-cd ..
+# Open another terminal and run this at the repository root
 make deploy-haproxy
 ```
 
