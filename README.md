@@ -106,6 +106,10 @@ drouter.port=80
 drouter.path=/some_path
 # Optional. If you have TLS/SSL enabled in your backend but you are doing TLS/SSL termination in HAProxy instead of the service container then set this to 'noverify'
 drouter.ssl=noverify
+# Optional. If you have TLS/SSL enabled in your backend set this to 'verify'.
+drouter.ssl=verify
+# Optional. If you want to replace (cut) path, use this. It will make requests to HAProxy frontend to path '/somepath' go to '/' in the HAProxy backend(s).
+drouter.cut_path
 ```
 
 ## Accepted drouter labels for HAProxy
