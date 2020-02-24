@@ -2,6 +2,8 @@
 
 HAPROXY_CONFIGS="./"
 
+HAPROXY_TEMPLATE="{}/haproxy.cfg.template-http".format(HAPROXY_CONFIGS)
+
 LB_CONFIG_FRONTEND_HOST="""
 	acl host_{server_name_formatted} hdr(host) -i {server_name}"""
 LB_CONFIG_FRONTEND_ACL_PATH="""
@@ -133,7 +135,7 @@ class Config():
         files=Files()
         FPATH="{}/haproxy.cfg".format(HAPROXY_CONFIGS)
         files.overwrite(FPATH, COMMENT)
-        files.write(FPATH, files.read("{}/haproxy.cfg.template-http".format(HAPROXY_CONFIGS)))
+        files.write(FPATH, files.read("{}".format(HAPROXY_TEMPLATE)))
         data=""
         for x in self.domains:
             data=data+self.domains[x].get("frontend_host")

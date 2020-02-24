@@ -107,6 +107,13 @@ try:
 except:
     logger.debug("HAPROXY_CONFIG_PATH is set to default -> {} (If you want to change this set HAPROXY_CONFIG_PATH as an environment variable".format(HAPROXY_CONFIG_PATH))
 
+HAPROXY_TEMPLATE="{}/haproxy.cfg.template-http".format(HAPROXY_CONFIG_PATH)
+try:
+    HAPROXY_TEMPLATE = "{}/{}".format(HAPROXY_CONFIG_PATH, os.environ["HAPROXY_TEMPLATE"])
+    logger.debug("Set HAPROXY_TEMPLATE={}".format(HAPROXY_TEMPLATE))
+except:
+    logger.debug("HAPROXY_TEMPLATE is set to default -> {} (If you want to change this set HAPROXY_TEMPLATE as an environment variable".format(HAPROXY_TEMPLATE))
+
 # Determine network for the containers
 DROUTER_DOCKER_VNET = "loadbalancer"
 try:
@@ -134,6 +141,7 @@ class DRouter():
 
     def writeHAProxyConfigs(self, services):
         haproxy.HAPROXY_CONFIGS=HAPROXY_CONFIG_PATH
+        haproxy.HAPROXY_TEMPLATE=HAPROXY_TEMPLATE
         conf = haproxy.Config()
         drouter_logger.debug("Writing HAProxy configurations")
         services=conf.arrangeConfigs(services)
