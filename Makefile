@@ -16,6 +16,6 @@ deploy-haproxy:
 	docker stack deploy lb -c haproxy/docker-compose.yml
 
 
-deploy-all: docker deploy-drouter deploy-haproxy
+deploy-all: deploy-drouter deploy-haproxy
 undeploy:
 	docker stack rm lb drouter
