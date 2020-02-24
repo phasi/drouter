@@ -120,10 +120,17 @@ drouter.auto_update=true
 
 ## Environment variables for DRouter
 ```bash
-# Variables with default values
-DROUTER_LOGLEVEL="INFO"
-DROUTER_DOCKER_SOCKET="/var/run/docker.sock"
-HAPROXY_CONFIG_PATH="../haproxy"
-DROUTER_DOCKER_VNET="loadbalancer"
+## Variables with default values
 
+# Define loglevel (default: INFO)
+DROUTER_LOGLEVEL="INFO"
+# Define docker socket location on the filesystem
+DROUTER_DOCKER_SOCKET="/var/run/docker.sock"
+# Define haproxy config folder
+HAPROXY_CONFIG_PATH="../haproxy"
+# Define which docker virtualnetwork DRouter should monitor
+DROUTER_DOCKER_VNET="loadbalancer"
+# Default template is 'haproxy.cfg.template-http' under haproxy/
+# Replace with full (absolute) path
+HAPROXY_TEMPLATE="/absolute/path/to/haproxy.cfg.template-http"
 ```
