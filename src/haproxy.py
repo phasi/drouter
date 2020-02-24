@@ -131,19 +131,15 @@ class Config():
         files.write(FPATH, files.read("{}/haproxy.cfg.template-http".format(HAPROXY_CONFIGS)))
         data=""
         for x in self.domains:
-            # files.write ( FPATH, self.domains[x].get("frontend_host") )
             data=data+self.domains[x].get("frontend_host")
             for path in self.domains[x].get("frontend_acl_path"):
-                # files.write ( FPATH, path )
                 data=data+path
             for clause in self.domains[x].get("frontend_to_backend"):
-                # files.write ( FPATH, clause )
                 data=data+clause
         
         for x in self.domains:
             for backend in self.domains[x].get("backend_configs"):
                 for l in backend:
-                    # files.write ( FPATH, l )
                     data=data+l
         files.write(FPATH, data)
 # ## Testing
