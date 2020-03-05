@@ -1,6 +1,8 @@
 
 clean:
 	rm -rf src/__pycache__
+	rm -rf bin/
+	rm -rf pyinstaller/
 	echo "" > haproxy/haproxy.cfg
 
 docker:
@@ -19,3 +21,6 @@ deploy-haproxy:
 deploy-all: deploy-drouter deploy-haproxy
 undeploy:
 	docker stack rm lb drouter
+
+bin:
+	pyinstaller --onefile --nowindowed --distpath bin/ --workpath ./pyinstaller --specpath ./ -n drouter drouter.spec
