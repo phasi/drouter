@@ -12,6 +12,8 @@ services:
         HAPROXY_CONFIG_PATH: "/config/haproxy"
         DROUTER_DOCKER_VNET: "loadbalancer"
         DROUTER_LOGLEVEL: "INFO"
+        HAPROXY_TEMPLATE: "/config/haproxy/haproxy.cfg.template-http"
+        DROUTER_DOCKER_SOCKET: "/var/run/docker.sock"
     deploy:
       mode: replicated
       replicas: 1
