@@ -203,19 +203,22 @@ class DRouter():
                 LB_SERVICE_ID=r.get("ID")
         drouter_logger.debug("HAProxy docker service id: {}".format(LB_SERVICE_ID))
         return LB_SERVICE_ID
-    
-    def IsLoadBalancer(self, container_id):
-        client=newRequest()
-        resp=client.request("GET", "http://v1.40/containers/{}/json".format(container_id))
-        try:
-            if resp.get("Config").get("Labels").get("com.docker.swarm.service.id") == self.getLoadBalancerServiceID():
-                return True
-            else:
-                return False
-        except:
-            drouter_logger.warning("Could not check if the service that joined was the load balancer.")
-            return None
 
+    def isLoadBalancer(self, service_id):
+        client=newRequest()
+        resp=client.request("GET", "http://v1.40/services/{}".format(service_id))
+        if "drouter.auto_update" in resp.get("Spec").get("Labels").keys():
+            return True
+        else:
+            return False
+
+    def isDRouterService(self, service_id):
+        client=newRequest()
+        resp=client.request("GET", "http://v1.40/services/{}".format(service_id))
+        if "drouter.host" in resp.get("Spec").get("Labels").keys():
+            return True
+        else:
+            return False
 
     def updateHAProxy(self):
         client=newRequest()
@@ -276,6 +279,7 @@ thread_updater_service=threading.Thread(target=updaterService, args=(q,), daemon
 
 ## Event collector
 def eventCollector(msg_queue):
+    e_collector_logger.debug("Starting event collector")
     client=UnixStreamHTTPConnection(DROUTER_DOCKER_SOCKET)
     while True:
         client.request("GET", "http://v1.40/events")
@@ -284,22 +288,19 @@ def eventCollector(msg_queue):
             data=response.readline()
             event=json.loads(data, encoding="utf-8")
             action=event.get("Action")
-            # Check network
-            if event.get("Type") == "network":
-                if event.get("Actor").get("Attributes").get("name") == DROUTER_DOCKER_VNET:
-                    e_collector_logger.info("There was a change in the network '{}'".format(DROUTER_DOCKER_VNET))
-                    e_collector_logger.debug(event)
-                    dr=DRouter()
-                    is_lb=dr.IsLoadBalancer(event.get("Actor").get("Attributes").get("container"))
-                    if is_lb == True or is_lb == None:
-                        if not action == "connect":
-                            e_collector_logger.info("Loadbalancer (HAProxy) disconnects from the network")
-                        else:
-                            e_collector_logger.info("Loadbalancer (HAProxy) joins/rejoins the network")
-                    else:
+
+            # Check if service has drouter labels
+            if event.get("Type") == "service":
+                dr=DRouter()
+                if action == "create" or action == "update":
+                    if dr.isDRouterService(event.get("Actor").get("ID")):
+                        e_collector_logger.info("There was a change in a drouter labeled service")
                         if msg_queue.empty():
-                            e_collector_logger.debug("Adding a job to the queue")
+                            e_collector_logger.debug("Adding a job to queue")
                             msg_queue.put("update")
+                elif action == "remove":
+                    if msg_queue.empty():
+                        e_collector_logger.debug("Adding a job to queue")
             if not response:
                 break
 
