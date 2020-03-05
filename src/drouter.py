@@ -280,7 +280,7 @@ thread_updater_service=threading.Thread(target=updaterService, args=(q,), daemon
 
 ## Event collector
 def eventCollector(msg_queue):
-    e_collector_logger.debug("Starting event collector")
+    e_collector_logger.info("Starting event collector")
     client=UnixStreamHTTPConnection(DROUTER_DOCKER_SOCKET)
     while True:
         client.request("GET", "http://v1.40/events")
