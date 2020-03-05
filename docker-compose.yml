@@ -11,7 +11,7 @@ services:
     environment:
         HAPROXY_CONFIG_PATH: "/config/haproxy"
         DROUTER_DOCKER_VNET: "loadbalancer"
-        DROUTER_LOGLEVEL: "DEBUG"
+        DROUTER_LOGLEVEL: "INFO"
     deploy:
       mode: replicated
       replicas: 1
