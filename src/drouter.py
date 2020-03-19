@@ -105,14 +105,14 @@ try:
     HAPROXY_CONFIG_PATH = os.environ["HAPROXY_CONFIG_PATH"]
     logger.debug("Set HAPROXY_CONFIG_PATH={}".format(HAPROXY_CONFIG_PATH))
 except:
-    logger.debug("HAPROXY_CONFIG_PATH is set to default -> {} (If you want to change this set HAPROXY_CONFIG_PATH as an environment variable".format(HAPROXY_CONFIG_PATH))
+    logger.debug("HAPROXY_CONFIG_PATH not set. Using default: {}".format(HAPROXY_CONFIG_PATH))
 
 HAPROXY_TEMPLATE="{}/haproxy.cfg.template-http".format(HAPROXY_CONFIG_PATH)
 try:
     HAPROXY_TEMPLATE = "{}".format(os.environ["HAPROXY_TEMPLATE"])
     logger.debug("Set HAPROXY_TEMPLATE={}".format(HAPROXY_TEMPLATE))
 except:
-    logger.debug("HAPROXY_TEMPLATE is set to default -> {} (If you want to change this set HAPROXY_TEMPLATE as an environment variable".format(HAPROXY_TEMPLATE))
+    logger.debug("HAPROXY_TEMPLATE not set. Using default: {}".format(HAPROXY_TEMPLATE))
 
 # Determine network for the containers
 DROUTER_DOCKER_VNET = "loadbalancer"
@@ -120,7 +120,7 @@ try:
     DROUTER_DOCKER_VNET = os.environ["DROUTER_DOCKER_VNET"]
     logger.debug("Set DROUTER_DOCKER_VNET={}".format(DROUTER_DOCKER_VNET))
 except:
-    logger.debug("DROUTER_DOCKER_VNET is set to default -> {} (If you want to change this set DROUTER_DOCKER_VNET as an environment variable".format(DROUTER_DOCKER_VNET))
+    logger.debug("DROUTER_DOCKER_VNET not set. Using default: {}".format(DROUTER_DOCKER_VNET))
 DROUTER_DOCKER_VNET_ID = None
 try:
     DROUTER_DOCKER_VNET_ID = os.environ["DROUTER_DOCKER_VNET_ID"]
@@ -186,13 +186,14 @@ class DRouter():
                 if t.get("ServiceID") == srv.id:
                     if t.get("Status").get("State") == "running" or t.get("Status").get("State") == "starting":
                         for n in t.get("NetworksAttachments"):
-                            if n.get("Network").get("Spec").get("Name") == DROUTER_DOCKER_VNET:
+                            if n.get("Network").get("ID") in self.getJoinableNetworks():
                                 for a in n.get("Addresses"):
                                     addr=a.split("/")[0]
                                     srv.upstream_servers.append("{}:{}".format(addr, srv.port))
 
             SERVICES.append(srv)
         return SERVICES
+    
 
     def getLoadBalancerServiceID(self):
         LB_SERVICE_ID=None
@@ -221,6 +222,7 @@ class DRouter():
             return False
 
     def updateHAProxy(self):
+        drouter_logger.info("Updating HAProxy docker service")
         client=newRequest()
         lb_id=self.getLoadBalancerServiceID()
         resp=client.request("GET", "http://v1.40/services/{}".format(lb_id))
@@ -228,15 +230,84 @@ class DRouter():
             version=resp["Version"]["Index"]
             resp["Spec"]["TaskTemplate"]["ForceUpdate"] = 1
             resp["Spec"]["ForceUpdate"] = 1
-            drouter_logger.debug("Updating HAProxy docker service")
             spec=resp.get("Spec")
             if resp.get("PreviousSpec"):
                 spec = resp.get("PreviousSpec")
-            return client.request("POST", "http://v1.40/services/{}/update?version={}".format(lb_id, version), spec )
+            drouter_logger.debug("Restarting HAProxy")
+            update_status=client.request("POST", "http://v1.40/services/{}/update?version={}".format(lb_id, version), spec )
+            drouter_logger.debug(update_status)
+            return True
         except:
             drouter_logger.error("Could not update HAProxy docker service")
             return False
 
+    def updateHAProxyNetwork(self, networks=None):
+        client=newRequest()
+        lb_id=self.getLoadBalancerServiceID()
+        resp=client.request("GET", "http://v1.40/services/{}".format(lb_id))
+        try:
+            version=resp["Version"]["Index"]
+            spec=resp.get("Spec")
+            if resp.get("PreviousSpec"):
+                spec = resp.get("PreviousSpec")
+            if networks is not None:
+                if len(networks) > 0:
+                    for n in networks:
+                        net={"Target": n}
+                        spec["TaskTemplate"]["Networks"].append(net)
+                    spec["TaskTemplate"]["ForceUpdate"] = 0
+                    spec["ForceUpdate"] = 0
+                    drouter_logger.info("Adding loadbalancer to networks: {}".format(networks))
+                    update_status=client.request("POST", "http://v1.40/services/{}/update?version={}".format(lb_id, version), spec )
+                    drouter_logger.debug(update_status)
+                    return True
+                else:
+                    drouter_logger.info("No new networks for loadbalancer to join. Maybe the joined service was already in the network.")
+                    return False
+        except:
+            drouter_logger.error("Could not update HAProxy docker service")
+            return False
+
+    # Return networks that have DRouter labeled services
+    def getJoinableNetworks(self):
+        services=self.checkServices()
+        VIPs=[]
+        for x in services:
+            for net in x.get("Endpoint").get("VirtualIPs"):
+                VIPs.append(net.get("NetworkID"))
+        VIPs = list(dict.fromkeys(VIPs))
+        return VIPs
+    
+    # Join loadbalancer to all new networks
+    def joinNetworks(self):
+        # Get lb (HAProxy) service id
+        lb=self.getLoadBalancerServiceID()
+        # Prepare request
+        client=newRequest()
+        # Get lb service
+        lb_srv=client.request("GET", "http://v1.40/services/{}".format(lb))
+        # Create list for lb networks
+        lb_networks=[]
+        # collect lb networks in list
+        for net in lb_srv.get("Endpoint").get("VirtualIPs"):
+            lb_networks.append(net.get("NetworkID"))
+
+        # Get list of joinable networks
+        joinableNetworks=self.getJoinableNetworks()
+
+        # Check if lb can be added to a network
+        # Create final network list
+        net_list=[]
+        for net in joinableNetworks:
+            # Append all new networks
+            if net not in lb_networks:
+                net_list.append(net)
+        net_list=net_list + lb_networks
+        self.updateHAProxyNetwork(networks=net_list)
+
+    # Leave networks that don't have DRouter services    
+    def leaveOldNetworks(self):
+        pass
 
 ##### SERVICES #####
 
@@ -253,6 +324,10 @@ class ClearableQueue(queue.Queue):
 # Create new queue
 q=ClearableQueue()
 
+# def networkMonitor(msg_queue):
+#     while True:
+#         pass
+
 # Updater service
 def updaterService(msg_queue):
     while True:
@@ -261,10 +336,11 @@ def updaterService(msg_queue):
             if msg == "update" or msg == "autoupdate":
                 updater_service_logger.info("Starting updater service")
                 if not msg == "autoupdate":
-                    updater_service_logger.debug("Waiting for 15 seconds for Docker to start/stop services.")
-                    time.sleep(15)
+                    updater_service_logger.debug("Waiting for 10 seconds for Docker to start/stop services.")
+                    time.sleep(10)
                 dr=DRouter()
-                time.sleep(1)
+                dr.joinNetworks()
+                time.sleep(3)
                 updater_service_logger.info("Ready to start updating")
                 dr.writeHAProxyConfigs(dr.collectTasks())
                 time.sleep(1)

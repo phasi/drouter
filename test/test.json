@@ -1,0 +1,246 @@
+[
+    {
+        "ID": "ajoku1ja8neuivsb6bauf4xzl",
+        "Version": {
+            "Index": 672
+        },
+        "CreatedAt": "2020-02-22T18:23:54.18366363Z",
+        "UpdatedAt": "2020-03-17T22:27:35.734867704Z",
+        "Spec": {
+            "Name": "lb_haproxy",
+            "Labels": {
+                "com.docker.stack.image": "haproxy:2.1.3-alpine",
+                "com.docker.stack.namespace": "lb",
+                "drouter.auto_update": "true"
+            },
+            "TaskTemplate": {
+                "ContainerSpec": {
+                    "Image": "haproxy:2.1.3-alpine@sha256:293ab68d183832cc40da505501ea5f8cc5c6ae7cc0704ad6f1e222b8d3eeea3b",
+                    "Labels": {
+                        "com.docker.stack.namespace": "lb"
+                    },
+                    "Privileges": {
+                        "CredentialSpec": null,
+                        "SELinuxContext": null
+                    },
+                    "Mounts": [
+                        {
+                            "Type": "bind",
+                            "Source": "/home/pasi/Documents/git_projects/drouter/haproxy/haproxy.cfg",
+                            "Target": "/usr/local/etc/haproxy/haproxy.cfg",
+                            "ReadOnly": true
+                        }
+                    ],
+                    "StopGracePeriod": 10000000000,
+                    "DNSConfig": {},
+                    "Isolation": "default"
+                },
+                "Resources": {},
+                "RestartPolicy": {
+                    "Condition": "on-failure",
+                    "Delay": 5000000000,
+                    "MaxAttempts": 3
+                },
+                "Placement": {
+                    "Platforms": [
+                        {
+                            "Architecture": "amd64",
+                            "OS": "linux"
+                        },
+                        {
+                            "OS": "linux"
+                        },
+                        {
+                            "OS": "linux"
+                        },
+                        {
+                            "Architecture": "arm64",
+                            "OS": "linux"
+                        },
+                        {
+                            "Architecture": "386",
+                            "OS": "linux"
+                        },
+                        {
+                            "Architecture": "ppc64le",
+                            "OS": "linux"
+                        },
+                        {
+                            "Architecture": "s390x",
+                            "OS": "linux"
+                        }
+                    ]
+                },
+                "Networks": [
+                    {
+                        "Target": "st7o48msclicole8ch2gwrep1",
+                        "Aliases": [
+                            "haproxy"
+                        ]
+                    }
+                ],
+                "ForceUpdate": 1,
+                "Runtime": "container"
+            },
+            "Mode": {
+                "Replicated": {
+                    "Replicas": 1
+                }
+            },
+            "UpdateConfig": {
+                "Parallelism": 1,
+                "Delay": 60000000000,
+                "FailureAction": "rollback",
+                "Monitor": 5000000000,
+                "MaxFailureRatio": 0,
+                "Order": "stop-first"
+            },
+            "RollbackConfig": {
+                "Parallelism": 1,
+                "FailureAction": "pause",
+                "Monitor": 5000000000,
+                "MaxFailureRatio": 0,
+                "Order": "stop-first"
+            },
+            "EndpointSpec": {
+                "Mode": "vip",
+                "Ports": [
+                    {
+                        "Protocol": "tcp",
+                        "TargetPort": 80,
+                        "PublishedPort": 80,
+                        "PublishMode": "ingress"
+                    }
+                ]
+            }
+        },
+        "PreviousSpec": {
+            "Name": "lb_haproxy",
+            "Labels": {
+                "com.docker.stack.image": "haproxy:2.1.3-alpine",
+                "com.docker.stack.namespace": "lb",
+                "drouter.auto_update": "true"
+            },
+            "TaskTemplate": {
+                "ContainerSpec": {
+                    "Image": "haproxy:2.1.3-alpine@sha256:293ab68d183832cc40da505501ea5f8cc5c6ae7cc0704ad6f1e222b8d3eeea3b",
+                    "Labels": {
+                        "com.docker.stack.namespace": "lb"
+                    },
+                    "Privileges": {
+                        "CredentialSpec": null,
+                        "SELinuxContext": null
+                    },
+                    "Mounts": [
+                        {
+                            "Type": "bind",
+                            "Source": "/home/pasi/Documents/git_projects/drouter/haproxy/haproxy.cfg",
+                            "Target": "/usr/local/etc/haproxy/haproxy.cfg",
+                            "ReadOnly": true
+                        }
+                    ],
+                    "Isolation": "default"
+                },
+                "Resources": {},
+                "RestartPolicy": {
+                    "Condition": "on-failure",
+                    "MaxAttempts": 3
+                },
+                "Placement": {
+                    "Platforms": [
+                        {
+                            "Architecture": "amd64",
+                            "OS": "linux"
+                        },
+                        {
+                            "OS": "linux"
+                        },
+                        {
+                            "OS": "linux"
+                        },
+                        {
+                            "Architecture": "arm64",
+                            "OS": "linux"
+                        },
+                        {
+                            "Architecture": "386",
+                            "OS": "linux"
+                        },
+                        {
+                            "Architecture": "ppc64le",
+                            "OS": "linux"
+                        },
+                        {
+                            "Architecture": "s390x",
+                            "OS": "linux"
+                        }
+                    ]
+                },
+                "Networks": [
+                    {
+                        "Target": "st7o48msclicole8ch2gwrep1",
+                        "Aliases": [
+                            "haproxy"
+                        ]
+                    }
+                ],
+                "ForceUpdate": 1,
+                "Runtime": "container"
+            },
+            "Mode": {
+                "Replicated": {
+                    "Replicas": 1
+                }
+            },
+            "UpdateConfig": {
+                "Parallelism": 1,
+                "Delay": 60000000000,
+                "FailureAction": "rollback",
+                "MaxFailureRatio": 0,
+                "Order": "stop-first"
+            },
+            "EndpointSpec": {
+                "Mode": "vip",
+                "Ports": [
+                    {
+                        "Protocol": "tcp",
+                        "TargetPort": 80,
+                        "PublishedPort": 80,
+                        "PublishMode": "ingress"
+                    }
+                ]
+            }
+        },
+        "Endpoint": {
+            "Spec": {
+                "Mode": "vip",
+                "Ports": [
+                    {
+                        "Protocol": "tcp",
+                        "TargetPort": 80,
+                        "PublishedPort": 80,
+                        "PublishMode": "ingress"
+                    }
+                ]
+            },
+            "Ports": [
+                {
+                    "Protocol": "tcp",
+                    "TargetPort": 80,
+                    "PublishedPort": 80,
+                    "PublishMode": "ingress"
+                }
+            ],
+            "VirtualIPs": [
+                {
+                    "NetworkID": "wvpjgtmpbc55gqufjzpixyz3a",
+                    "Addr": "10.255.0.3/16"
+                },
+                {
+                    "NetworkID": "st7o48msclicole8ch2gwrep1",
+                    "Addr": "11.0.0.2/22"
+                }
+            ]
+        }
+    }
+]

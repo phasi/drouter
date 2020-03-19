@@ -15,12 +15,12 @@ LB_CONFIG_BACKEND="""
 
 backend {upstream_name}
 	# Stick on source
-	stick-table type ip size 5000k expire 10m store conn_cur
+	stick-table type string len 48 size 5000k expire 10m store conn_cur
 	stick on src
     # Backends"""
 
 LB_CONFIG_BACKEND_SERVER="""
-    server {upstream_name}_{id} {upstream_server} {ssl} cookie c_{upstream_name}_{id}"""
+    server {upstream_name}_{id} {upstream_server} {ssl} cookie c_{upstream_name}_{id} check"""
 
 LB_CONFIG_BACKEND_CUT_PATH="""
     http-request replace-path /{server_path_without_slash}[/]?(.*) /\\1"""
