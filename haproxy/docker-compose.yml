@@ -20,9 +20,5 @@ services:
         max_attempts: 3
         condition: on-failure
     networks:
-      - loadbalancer
-
-networks:
-  loadbalancer:
-    external: true
+      - default
 

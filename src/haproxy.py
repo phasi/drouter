@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import operator
 HAPROXY_CONFIGS="./"
 
 HAPROXY_TEMPLATE="{}/haproxy.cfg.template-http".format(HAPROXY_CONFIGS)
@@ -91,8 +91,6 @@ class Config():
         self.domains={}
     
     def arrangeConfigs(self, services):
-        import operator
-        # arranged_list=[]
         services.sort(key=operator.attrgetter("path"), reverse=True)
         return services
     
