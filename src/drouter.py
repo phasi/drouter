@@ -203,7 +203,13 @@ class DRouter():
         resp=client.request("GET", "http://v1.40/services/{}".format(lb_id))
         try:
             version=resp["Version"]["Index"]
-            spec=resp.get("Spec")
+            if "PreviousSpec" in resp.keys():
+                spec=resp.get("PreviousSpec")
+            else:
+                spec=resp.get("Spec")
+            # meta_dates=(resp.get("CreatedAt"), resp.get("UpdatedAt"))
+            # drouter_logger.debug(meta_dates)
+            # replicas=spec.get("Mode").get("Replicated").get("Replicas")
             if len(networks.get("joinable_nets")) > 0:
                     drouter_logger.debug("Found new networks: {}".format(networks.get("joinable_nets")))
                     for n in networks.get("joinable_nets"):
