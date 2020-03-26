@@ -16,6 +16,8 @@ defaults
 	timeout http-request 30s
 	mode http
 
+
+
 frontend http
 	bind :80
 

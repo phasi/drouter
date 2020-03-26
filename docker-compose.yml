@@ -10,10 +10,10 @@ services:
         - "./haproxy:/config/haproxy"
     environment:
         HAPROXY_CONFIG_PATH: "/config/haproxy"
-        DROUTER_DOCKER_VNET: "loadbalancer"
         DROUTER_LOGLEVEL: "INFO"
         HAPROXY_TEMPLATE: "/config/haproxy/haproxy.cfg.template-http"
         DROUTER_DOCKER_SOCKET: "/var/run/docker.sock"
+        DROUTER_STATS: ""
     deploy:
       mode: replicated
       replicas: 1
@@ -24,3 +24,5 @@ services:
       restart_policy:
         max_attempts: 3
         condition: on-failure
+    networks:
+      - default

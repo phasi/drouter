@@ -18,11 +18,7 @@ services:
         failure_action: rollback
       restart_policy:
         max_attempts: 3
-        condition: on-failure
+        condition: any
     networks:
-      - loadbalancer
-
-networks:
-  loadbalancer:
-    external: true
+      - default
 
