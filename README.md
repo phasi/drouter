@@ -2,16 +2,16 @@
 
 Create HAProxy configurations automatically based on the current status of your Docker Swarm.
 
-DRouter will check your service labels and configure HAProxy according to them.
+DRouter will check your services' labels and configure HAProxy according to them. If you have new service DRouter makes HAProxy automatically join to its network.
 
-## Prerequisites
-
-- Docker Swarm configured
 
 ## DRouter example photo
 
 ![DRouter picture](drouter.png)
 
+## Prerequisites
+
+- Docker Swarm configured
 
 ## Dependencies
 
@@ -34,12 +34,6 @@ Otherwise you will also need:
 
 ## How to run DRouter?
 
-Create virtual network for DRouter. (Default: loadbalancer)
-Start DRouter (either in container or normally)
-
-If necessary pass DROUTER_DOCKER_VNET to drouter at startup where that environment variable contains the Docker virtual network name.
-
-
 ### Using the DRouter in docker container
 
 To run DRouter in a container just build this repository to a Docker image and deploy from docker-compose.yml in the repository root.
@@ -53,21 +47,7 @@ make lbnet
 make deploy-all
 ```
 
-
-### Using DRouter outside Docker container
-
-- Install dependencies
-
-shortcut:
-```bash
-make lbnet
-cd src
-./drouter.py
-# Open another terminal and run this at the repository root
-make deploy-haproxy
-```
-
-## Adding a swarm service for DRouter
+## Adding a swarm service with correct labels
 
 Deploy your swarm service with labels (Example below):
 
@@ -141,9 +121,9 @@ DROUTER_LOGLEVEL="INFO"
 DROUTER_DOCKER_SOCKET="/var/run/docker.sock"
 # Define haproxy config folder
 HAPROXY_CONFIG_PATH="../haproxy"
-# Define which docker virtualnetwork DRouter should monitor
-DROUTER_DOCKER_VNET="loadbalancer"
 # Default template is 'haproxy.cfg.template-http' under haproxy/
 # Replace with full (absolute) path
 HAPROXY_TEMPLATE="/absolute/path/to/haproxy.cfg.template-http"
+# Just add this environment variable with any value and DRouter will deliver stats in stdout
+DROUTER_STATS=""
 ```
