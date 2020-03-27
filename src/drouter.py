@@ -10,6 +10,7 @@ import os
 import threading
 import queue
 import logging
+import datetime
 
 # Create loggers
 logger = logging.getLogger('drouter.main')
@@ -18,6 +19,7 @@ e_collector_logger = logging.getLogger('drouter.eventCollector()')
 scheduler_logger = logging.getLogger('drouter.schedulerService()')
 md_collector_logger = logging.getLogger('drouter.swarmMetadataCollectorService()')
 drouter_logger = logging.getLogger('drouter.DRouter()')
+stats_logger = logging.getLogger('drouter.statisticsService()')
 
 # Set default loglevel
 DROUTER_LOGLEVEL="INFO"
@@ -46,6 +48,7 @@ e_collector_logger.setLevel(LOGLEVEL)
 drouter_logger.setLevel(LOGLEVEL)
 scheduler_logger.setLevel(LOGLEVEL)
 md_collector_logger.setLevel(LOGLEVEL)
+stats_logger.setLevel(LOGLEVEL)
 
 # create console log handler and set its level
 ch = logging.StreamHandler()
@@ -62,10 +65,12 @@ e_collector_logger.addHandler(ch)
 drouter_logger.addHandler(ch)
 scheduler_logger.addHandler(ch)
 md_collector_logger.addHandler(ch)
+stats_logger.addHandler(ch)
+
 #### START PROGRAM ####
 
 logger.info("Starting DRouter")
-logger.debug("DRouter version: {}".format(DROUTER_VERSION))
+logger.info("Version: {}".format(DROUTER_VERSION))
 
 DROUTER_DOCKER_SOCKET="/var/run/docker.sock"
 try:
@@ -309,6 +314,12 @@ class DRouter():
 
 ##### SERVICES #####
 
+class Stats():
+    def __init__(self, name, value):
+        self.name=name
+        self.value=value
+
+
 # Extend queue to clearable queue
 class ClearableQueue(queue.Queue):
 
@@ -320,20 +331,16 @@ class ClearableQueue(queue.Queue):
             pass
 
 # Create queues
-q_scheduler_msg=ClearableQueue()
 q_event=ClearableQueue()
 q_md_collector=ClearableQueue()
 q_metadata=ClearableQueue()
-q_updater=ClearableQueue()
+q_stats=ClearableQueue()
 
-# Initialize stats counter
-STATSCOUNTER=10
 
 # Swarm Metadata Collector Service
 # Keeps swarm metadata updated, controls getting the metadata instead of all functions getting same data separately and repeatedly!!
-def swarmMetadataCollectorService(q_md_collector, q_metadata, q_updater, q_scheduler_msg):
-    STATS_COUNTER=STATSCOUNTER
-    COOLDOWN=10
+def swarmMetadataCollectorService(event_metadata_update, q_md_collector, q_metadata, q_stats):
+    COUNT=0
     def updateData():
         md_collector_logger.info("Downloading Docker metadata")
         data={}
@@ -342,86 +349,52 @@ def swarmMetadataCollectorService(q_md_collector, q_metadata, q_updater, q_sched
         data["tasks"]=dc.getTasks()
         data["networks"]=dc.getNetworks()
         return data
-    METADATA_DOWNLOADS=0
-    DATA_REQ=False
-    CHECKABLE_EVENT={}
-    while True:
-        if (DATA_REQ and COOLDOWN == 0):
-            data=updateData()
-            dr=DRouter(data)
-            if "Actor" in CHECKABLE_EVENT.keys():
-                ID=CHECKABLE_EVENT.get("Actor").get("ID")
-                IS_ACCEPTED=dr.isDRouterService(ID)
-                if IS_ACCEPTED:
-                    md_collector_logger.debug("Labels accepted.")
-                    q_metadata.put(data)
-                else:
-                    DATA_REQ=False
-            METADATA_DOWNLOADS +=1
-            if COOLDOWN == 0 and IS_ACCEPTED:
-                q_updater.put("")
-                DATA_REQ=False
-        time.sleep(1)
-        if not q_md_collector.empty():
-            msg=q_md_collector.get()
-            if msg[0] == "data_req":
-                CHECKABLE_EVENT=msg[1]
-                DATA_REQ=True
-                if COOLDOWN < 4:
-                    COOLDOWN += 2
-        if STATS_COUNTER == 0:
-            # lock=threading.Lock()
-            # with lock:
-            q_scheduler_msg.put(("stats:md_collector", {"metadata_downloads": METADATA_DOWNLOADS}))
-            STATS_COUNTER=STATSCOUNTER
-        else:
-            STATS_COUNTER -= 1
-        if COOLDOWN == 0:
-            COOLDOWN = 10
-        COOLDOWN -= 1
 
-# Swarm Metadata Collector Service thread
-thread_md_c_service=threading.Thread(target=swarmMetadataCollectorService, args=(q_md_collector, q_metadata, q_updater, q_scheduler_msg), daemon=True)
+    while True:
+        time.sleep(1)
+        can_update=event_metadata_update.wait()
+        # Do it here
+        event=q_md_collector.get()
+        data=updateData()
+        dr=DRouter(data)
+
+        is_accepted=False
+        if "Actor" in event.keys():
+            ID=event.get("Actor").get("ID")
+            is_accepted=dr.isDRouterService(ID)
+        if is_accepted:
+            q_metadata.put(data)
+        # Send stats
+        COUNT +=1
+        q_stats.put(Stats("metadata_update_count", COUNT))
+        event_metadata_update.clear()
+
 
 # Updater service
 # Writes HAProxy configurations to disk when ordered
-def updaterService(q_updater, q_metadata, q_scheduler_msg):
-    HAPROXY_UPDATES=0
-    STATS_COUNTER=STATSCOUNTER
+def updaterService(event_update_haproxy, q_metadata, q_stats):
+    COUNT=0
     while True:
-        # Go easy on the CPU
         time.sleep(1)
-        lock=threading.Lock()
-        with lock:
-            if not q_updater.empty():
-                q_updater.clear()
-                # Update HAProxy here
-                data=q_metadata.get()
-                dr=DRouter(data)
-                updater_service_logger.debug("update HAProxy")
-                dr.writeHAProxyConfigs(dr.collectLabels(dr.checkServices()))
-                time.sleep(1)
-                dr.updateHAProxyNetwork(dr.getJoinableNetworks())
-                HAPROXY_UPDATES += 1
-        if STATS_COUNTER == 0:
-            # lock=threading.Lock()
-            # with lock:
-            q_scheduler_msg.put(("stats:updater_service", {"times_haproxy_updated": HAPROXY_UPDATES}))
-            STATS_COUNTER=STATSCOUNTER
-        else:
-            STATS_COUNTER -= 1
+        can_update=event_update_haproxy.wait()
+        updater_service_logger.info("Updating HAProxy")
+        # UPDATE HERE
+        data=q_metadata.get()
+        dr=DRouter(data)
+        dr.writeHAProxyConfigs(dr.collectLabels(dr.checkServices()))
+        time.sleep(1)
+        dr.updateHAProxyNetwork(dr.getJoinableNetworks())
+        COUNT +=1
+        q_stats.put(Stats("haproxy_update_count", COUNT))
+        event_update_haproxy.clear()
 
-# Updater service thread
-thread_updater_service=threading.Thread(target=updaterService, args=(q_updater, q_metadata, q_scheduler_msg), daemon=True)
+
+
 
 # Event collector
 # Collects events from Docker's API and forwards them to schedulerService
-def eventCollector(q_event, q_metadata, q_scheduler_msg, q_md_collector):
+def eventCollector(q_event, q_metadata, q_md_collector):
     client=UnixStreamHTTPConnection(DROUTER_DOCKER_SOCKET)
-    # while q_metadata.empty():
-    #     time.sleep(3)
-    # data=q_metadata.get()
-    # dr=DRouter(data)
     while True:
         client.request("GET", "http://v1.40/events")
         response= client.getresponse()
@@ -434,70 +407,113 @@ def eventCollector(q_event, q_metadata, q_scheduler_msg, q_md_collector):
             # Check if service has drouter labels
             if event.get("Type") == "service":
                 if action == "create" or action == "update" or action == "remove":
-                    # if dr.isDRouterService(event.get("Actor").get("ID")):
                     if q_event.empty():
-                        e_collector_logger.debug("Notifying scheduler about a change in the Swarm")
                         q_event.put(event)
             if not response:
                 break
 
-# scheduler Service thread
-thread_event_collector=threading.Thread(target=eventCollector, args=(q_event, q_metadata, q_scheduler_msg, q_md_collector), daemon=True)
+def statisticsService(q_stats, event_stats_get):
+    all_stats=[]
+    while True:
+        time.sleep(1)
+        event_stats_get.wait()
+        while not q_stats.empty():
+            all_stats.append(q_stats.get())
+        loggable={}
+        for s in all_stats:
+            loggable[s.name]=s.value
+        stats_logger.info(loggable)
+        event_stats_get.clear()
 
-
-
-
-
-# Threads
-logger.info("Starting Event Collector")
-thread_event_collector.start()
-logger.info("Starting Swarm Metadata Collector Service")
-thread_md_c_service.start()
-logger.info("Starting Updater Service")
-thread_updater_service.start()
+        
 
 
 # Scheduler service
 # Distributes messages/tasks.
-def schedulerService(q_event, q_md_collector, q_updater, q_scheduler_msg):
-    STATS_COUNTER=STATSCOUNTER+15
-    STATS={
-        "events": 0
-    }
-    EVENTS_NEW=0
-    EVENTS_OLD=0
-    NEW_EVENTS=False
-    while True:
-        # Go easy on the CPU
-        time.sleep(1)
-        EVENTS_OLD=EVENTS_NEW
-        if not q_event.empty():
-           EVENTS_NEW += 1
-           event=q_event.get()
-           scheduler_logger.debug(event)
-           STATS["events"] = EVENTS_NEW
-           q_md_collector.put(("data_req", event))
-        lock=threading.Lock()
-        with lock:
-            while not q_scheduler_msg.empty():
-                msg=q_scheduler_msg.get()
-                if msg[0].startswith("stats"):
-                    component=msg[0].split(":")[1]
-                    STATS[component] = msg[1]
+def schedulerService(q_event, q_md_collector):
 
-        if STATS_COUNTER == 0:
-            if DROUTER_STATS==True:
-                scheduler_logger.info(("stats", STATS))
-            STATS_COUNTER=STATSCOUNTER+10
-        else:
-            STATS_COUNTER -= 1
-        
+    # Events
+    event_metadata_update=threading.Event()
+    event_update_haproxy=threading.Event()
+    event_stats_get=threading.Event()
+
+    ## THREADS
+
+    # Swarm Metadata Collector Service thread
+    thread_md_c_service=threading.Thread(target=swarmMetadataCollectorService, args=(event_metadata_update, q_md_collector, q_metadata, q_stats), daemon=True)
+    # Updater service thread
+    thread_updater_service=threading.Thread(target=updaterService, args=(event_update_haproxy, q_metadata, q_stats), daemon=True)
+    # event collector thread
+    thread_event_collector=threading.Thread(target=eventCollector, args=(q_event, q_metadata, q_md_collector), daemon=True)
+    # statistics service thread
+    thread_stats=threading.Thread(target=statisticsService, args=(q_stats, event_stats_get), daemon=True)
+
+    # Start threads
+    logger.info("Starting Event Collector")
+    thread_event_collector.start()
+    logger.info("Starting Swarm Metadata Collector Service")
+    thread_md_c_service.start()
+    logger.info("Starting Updater Service")
+    thread_updater_service.start()
+    logger.info("Starting Statistics Service")
+    thread_stats.start()
+
+    def differenceInSeconds(past, now):
+        return (now - past)
+
+    def ts(time):
+        return time.timestamp()
+
+    STARTTIME=datetime.datetime.now()
+    LAST_METADATA_UPDATE=STARTTIME
+    LAST_HAPROXY_UPDATE=STARTTIME
+    LAST_STATS_UPDATE=STARTTIME
+    FIRSTRUN=True
+    # Main Loop
+    while True:
+        time.sleep(1)
+        events=[]
+        NOW=datetime.datetime.now()
+        # Check statistics
+        if FIRSTRUN or differenceInSeconds(ts(LAST_STATS_UPDATE), ts(NOW)) > 30:
+            main_stats=[]
+            main_stats.append(Stats("scheduler_start_time", STARTTIME.isoformat()))
+            main_stats.append(Stats("last_metadata_update", LAST_METADATA_UPDATE.isoformat()))
+            main_stats.append(Stats("last_haproxy_update", LAST_HAPROXY_UPDATE.isoformat()))
+            main_stats.append(Stats("last_stats_update", NOW.isoformat()))
+            for s in main_stats:
+                q_stats.put(s)
+            if not event_stats_get.isSet():
+                event_stats_get.set()
+            LAST_STATS_UPDATE=NOW
+            FIRSTRUN=False
+        # Check if HAProxy needs updating
+        if differenceInSeconds(ts(LAST_HAPROXY_UPDATE), ts(LAST_METADATA_UPDATE)) > 15:
+            event_update_haproxy.set()
+            LAST_HAPROXY_UPDATE=NOW
+        # check queue for events
+        if not q_event.empty():
+            event=q_event.get()
+            scheduler_logger.debug(event)
+            events.append({"timestamp": NOW, "event": event})
+
+        # Go through events and only send those that are valid
+        if len(events) > 0 and differenceInSeconds(ts(LAST_METADATA_UPDATE), ts(NOW)) > 10:
+            for x in events:
+                # If timestamp is newer than last metadata update we'll pass the event to Swarm Metadata Collector
+                if ts(x.get("timestamp")) > ts(LAST_METADATA_UPDATE):
+                    scheduler_logger.debug("Notifying Metadata Collector")
+                    q_md_collector.put(x.get("event"))
+                    event_metadata_update.set()
+                    LAST_METADATA_UPDATE=NOW
+            events=[]
+
 
 try:
 
     # Main
     logger.info("Starting Scheduler")
-    schedulerService(q_event, q_md_collector, q_updater, q_scheduler_msg)
+    schedulerService(q_event, q_md_collector)
 
 except (KeyboardInterrupt, SystemExit):
     sys.exit(0)
