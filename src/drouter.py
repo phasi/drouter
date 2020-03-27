@@ -391,19 +391,18 @@ def updaterService(q_updater, q_metadata, q_scheduler_msg):
     while True:
         # Go easy on the CPU
         time.sleep(1)
-        if not q_updater.empty():
-            q_updater.clear()
-            # Update HAProxy here
-            data=q_metadata.get()
-            dr=DRouter(data)
-            updater_service_logger.debug("update HAProxy")
-            lock=threading.Lock()
-            with lock:
+        lock=threading.Lock()
+        with lock:
+            if not q_updater.empty():
+                q_updater.clear()
+                # Update HAProxy here
+                data=q_metadata.get()
+                dr=DRouter(data)
+                updater_service_logger.debug("update HAProxy")
                 dr.writeHAProxyConfigs(dr.collectLabels(dr.checkServices()))
-            time.sleep(1)
-            with lock:
+                time.sleep(1)
                 dr.updateHAProxyNetwork(dr.getJoinableNetworks())
-            HAPROXY_UPDATES += 1
+                HAPROXY_UPDATES += 1
         if STATS_COUNTER == 0:
             # lock=threading.Lock()
             # with lock:
