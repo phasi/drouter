@@ -370,9 +370,9 @@ def swarmMetadataCollectorService(q_md_collector, q_metadata, q_updater, q_sched
                 if COOLDOWN < 4:
                     COOLDOWN += 2
         if STATS_COUNTER == 0:
-            lock=threading.Lock()
-            with lock:
-                q_scheduler_msg.put(("stats:md_collector", {"metadata_downloads": METADATA_DOWNLOADS}))
+            # lock=threading.Lock()
+            # with lock:
+            q_scheduler_msg.put(("stats:md_collector", {"metadata_downloads": METADATA_DOWNLOADS}))
             STATS_COUNTER=STATSCOUNTER
         else:
             STATS_COUNTER -= 1
@@ -397,14 +397,17 @@ def updaterService(q_updater, q_metadata, q_scheduler_msg):
             data=q_metadata.get()
             dr=DRouter(data)
             updater_service_logger.debug("update HAProxy")
-            dr.writeHAProxyConfigs(dr.collectLabels(dr.checkServices()))
-            time.sleep(1)
-            dr.updateHAProxyNetwork(dr.getJoinableNetworks())
-            HAPROXY_UPDATES += 1
-        if STATS_COUNTER == 0:
             lock=threading.Lock()
             with lock:
-                q_scheduler_msg.put(("stats:updater_service", {"times_haproxy_updated": HAPROXY_UPDATES}))
+                dr.writeHAProxyConfigs(dr.collectLabels(dr.checkServices()))
+            time.sleep(1)
+            with lock:
+                dr.updateHAProxyNetwork(dr.getJoinableNetworks())
+            HAPROXY_UPDATES += 1
+        if STATS_COUNTER == 0:
+            # lock=threading.Lock()
+            # with lock:
+            q_scheduler_msg.put(("stats:updater_service", {"times_haproxy_updated": HAPROXY_UPDATES}))
             STATS_COUNTER=STATSCOUNTER
         else:
             STATS_COUNTER -= 1
@@ -475,11 +478,13 @@ def schedulerService(q_event, q_md_collector, q_updater, q_scheduler_msg):
            scheduler_logger.debug(event)
            STATS["events"] = EVENTS_NEW
            q_md_collector.put(("data_req", event))
-        while not q_scheduler_msg.empty():
-            msg=q_scheduler_msg.get()
-            if msg[0].startswith("stats"):
-                component=msg[0].split(":")[1]
-                STATS[component] = msg[1]
+        lock=threading.Lock()
+        with lock:
+            while not q_scheduler_msg.empty():
+                msg=q_scheduler_msg.get()
+                if msg[0].startswith("stats"):
+                    component=msg[0].split(":")[1]
+                    STATS[component] = msg[1]
 
         if STATS_COUNTER == 0:
             if DROUTER_STATS==True:
